@@ -3,13 +3,19 @@ package com.example.rocketreserver
 import android.content.Context
 import android.os.Looper
 import com.apollographql.apollo.ApolloClient
-import com.apollographql.apollo.subscription.WebSocketSubscriptionTransport
+import com.apollographql.apollo.api.ApolloExperimental
+import com.apollographql.apollo.network.http.ApolloHttpNetworkTransport
+import com.apollographql.apollo.network.ws.ApolloWebSocketFactory
+import com.apollographql.apollo.network.ws.ApolloWebSocketNetworkTransport
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
 
+@OptIn(ApolloExperimental::class, ExperimentalCoroutinesApi::class)
 private var instance: ApolloClient? = null
 
+@OptIn(ApolloExperimental::class, ExperimentalCoroutinesApi::class)
 fun apolloClient(context: Context): ApolloClient {
     check(Looper.myLooper() == Looper.getMainLooper()) {
         "Only the main thread can get the apolloClient instance"
@@ -19,25 +25,17 @@ fun apolloClient(context: Context): ApolloClient {
         return instance!!
     }
 
-    val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(AuthorizationInterceptor(context))
-        .build()
 
-    instance = ApolloClient.builder()
-        .serverUrl("https://apollo-fullstack-tutorial.herokuapp.com/graphql")
-        .subscriptionTransportFactory(WebSocketSubscriptionTransport.Factory("wss://apollo-fullstack-tutorial.herokuapp.com/graphql", okHttpClient))
-        .okHttpClient(okHttpClient)
-        .build()
+    instance = ApolloClient(
+        networkTransport = ApolloHttpNetworkTransport(
+            serverUrl = "https://apollo-fullstack-tutorial.herokuapp.com/graphql",
+            headers = mapOf("Authorization" to (User.getToken(context) ?: ""))
+        ),
+        subscriptionNetworkTransport = ApolloWebSocketNetworkTransport(
+            webSocketFactory = ApolloWebSocketFactory("https://apollo-fullstack-tutorial.herokuapp.com/graphql")
+        )
+    )
 
     return instance!!
 }
 
-private class AuthorizationInterceptor(val context: Context) : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request().newBuilder()
-            .addHeader("Authorization", User.getToken(context) ?: "")
-            .build()
-
-        return chain.proceed(request)
-    }
-}

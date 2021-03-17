@@ -1,7 +1,6 @@
 package com.example.rocketreserver
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,9 +9,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import coil.api.load
-import com.apollographql.apollo.coroutines.toDeferred
 import com.apollographql.apollo.exception.ApolloException
 import com.example.rocketreserver.databinding.LaunchDetailsFragmentBinding
+import kotlinx.coroutines.flow.first
 
 class LaunchDetailsFragment : Fragment() {
 
@@ -35,7 +34,7 @@ class LaunchDetailsFragment : Fragment() {
             binding.error.visibility = View.GONE
 
             val response = try {
-                apolloClient(requireContext()).query(LaunchDetailsQuery(id = args.launchId)).toDeferred().await()
+                apolloClient(requireContext()).query(LaunchDetailsQuery(id = args.launchId)).execute().first()
             } catch (e: ApolloException) {
                 binding.progressBar.visibility = View.GONE
                 binding.error.text = "Oh no... A protocol error happened"
@@ -88,14 +87,12 @@ class LaunchDetailsFragment : Fragment() {
             binding.bookProgressBar.visibility = View.VISIBLE
 
             lifecycleScope.launchWhenResumed {
-                val mutation = if (isBooked) {
-                    CancelTripMutation(id = args.launchId)
-                } else {
-                    BookTripMutation(id = args.launchId)
-                }
-
                 val response = try {
-                    apolloClient(requireContext()).mutate(mutation).toDeferred().await()
+                    if (isBooked) {
+                        apolloClient(requireContext()).mutate(CancelTripMutation(id = args.launchId)).execute().first()
+                    } else {
+                        apolloClient(requireContext()).mutate(BookTripMutation(id = args.launchId)).execute().first()
+                    }
                 } catch (e: ApolloException) {
                     configureButton(isBooked)
                     return@launchWhenResumed

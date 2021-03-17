@@ -9,9 +9,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.apollographql.apollo.api.Input
-import com.apollographql.apollo.coroutines.toDeferred
 import com.example.rocketreserver.databinding.LoginFragmentBinding
-import java.lang.Exception
+import kotlinx.coroutines.flow.first
 
 class LoginFragment : Fragment() {
     private lateinit var binding: LoginFragmentBinding
@@ -36,7 +35,7 @@ class LoginFragment : Fragment() {
             binding.submit.visibility = View.GONE
             lifecycleScope.launchWhenResumed {
                 val response = try {
-                    apolloClient(requireContext()).mutate(LoginMutation(email = Input.fromNullable(email))).toDeferred().await()
+                    apolloClient(requireContext()).mutate(LoginMutation(email = Input.fromNullable(email))).execute().first()
                 } catch (e: Exception) {
                     null
                 }
