@@ -18,7 +18,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
-
         lifecycleScope.launch {
             apolloClient(this@MainActivity).subscribe(TripsBookedSubscription()).toFlow()
                 .retryWhen { _, attempt ->

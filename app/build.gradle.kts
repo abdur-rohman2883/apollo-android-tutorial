@@ -2,7 +2,7 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("androidx.navigation.safeargs.kotlin")
-    id("com.apollographql.apollo").version("2.5.5")
+    id("com.apollographql.apollo").version("2.5.5").apply(false)
 }
 
 android {
@@ -54,6 +54,28 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.2.0")
 }
 
-apollo {
+
+val generateSourcesTask = tasks.register("generateService1ApolloSources", com.apollographql.apollo.gradle.internal.ApolloGenerateSourcesTask::class.java) {
     generateKotlinModels.set(true)
+    outputDir.set(layout.buildDirectory.dir("generated/source/apollo/service1"))
+    schemaFile.set(file("src/test/graphql/service1/schema.sdl"))
+    val sourceDirectorySet = objects.sourceDirectorySet("service1", "service1")
+    sourceDirectorySet.include("**/*.graphql")
+    sourceDirectorySet.srcDir("src/test/graphql/service1")
+    graphqlFiles.from(sourceDirectorySet)
+    projectName.set(name)
+    generateMetadata.set(false)
+    rootPackageName.set("com.service1")
+    projectRootDir.set(rootDir)
+    rootFolders.set(sourceDirectorySet.sourceDirectories.map { it.absolutePath })
+    metadataOutputFile.set(layout.buildDirectory.file("metadata/apollo/metadata.json"))
+    operationOutputGenerator = com.apollographql.apollo.compiler.OperationOutputGenerator.DefaultOperationOuputGenerator(com.apollographql.apollo.compiler.OperationIdGenerator.Sha256())
+}
+
+android {
+    unitTestVariants.all {
+        println("configuring variant: $name")
+        addJavaSourceFoldersToModel(generateSourcesTask.get().outputDir.asFile.get())
+        registerJavaGeneratingTask(generateSourcesTask.get(), generateSourcesTask.get().outputDir.asFile.get())
+    }
 }

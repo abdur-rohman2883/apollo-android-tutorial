@@ -12,6 +12,7 @@ import org.junit.Assert.*
 class ExampleUnitTest {
     @Test
     fun addition_isCorrect() {
+        println(com.service1.TestQuery1Query::class.java.simpleName)
         assertEquals(4, 2 + 2)
     }
 }
