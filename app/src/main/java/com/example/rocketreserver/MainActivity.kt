@@ -10,9 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layoutId
@@ -29,6 +27,7 @@ import com.google.accompanist.coil.rememberCoilPainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -66,8 +65,11 @@ sealed class UiState {
 @Composable
 fun LaunchListContent() {
     val context = LocalContext.current
-    val state = remember {
-        apolloClient(context).query(LaunchListQuery()).watcher().toFlow()
+    val client = remember {
+        apolloClient(context)
+    }
+    val state: State<UiState> = produceState(initialValue = UiState.Loading, key1 = client, producer = {
+        client.query(LaunchListQuery()).watcher().toFlow()
             .map {
                 val launchList = it
                     .data
@@ -84,8 +86,10 @@ fun LaunchListContent() {
             }
             .catch { e ->
                 emit(UiState.Error)
+            }.collect {
+                value = it
             }
-    }.collectAsState(initial = UiState.Loading)
+    })
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (val value = state.value) {
