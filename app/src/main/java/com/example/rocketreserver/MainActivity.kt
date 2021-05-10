@@ -1,36 +1,35 @@
 package com.example.rocketreserver
 
 import android.os.Bundle
-import android.util.Log
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.ScrollableColumn
-import androidx.compose.foundation.Text
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyColumnFor
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layoutId
-import androidx.compose.ui.platform.ContextAmbient
-import androidx.compose.ui.platform.setContent
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.ui.tooling.preview.Preview
-import coil.request.ImageRequest
-import com.apollographql.apollo.ApolloCall
-import com.apollographql.apollo.ApolloQueryCall
-import com.apollographql.apollo.api.Response
-import com.apollographql.apollo.coroutines.toDeferred
+import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.ConstraintSet
+import androidx.constraintlayout.compose.Dimension
+import com.apollographql.apollo.coroutines.await
 import com.apollographql.apollo.coroutines.toFlow
-import com.apollographql.apollo.exception.ApolloException
-import dev.chrisbanes.accompanist.coil.CoilImage
+import com.google.accompanist.coil.rememberCoilPainter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onErrorResume
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -51,7 +50,7 @@ fun RocketReserverApp() {
                 TopAppBar(
                     title = { Text(text = "RocketReserver") },
                 )
-            }, bodyContent = {
+            }, content = {
                 LaunchListContent()
             }
         )
@@ -66,8 +65,7 @@ sealed class UiState {
 
 @Composable
 fun LaunchListContent() {
-    val context = ContextAmbient.current
-
+    val context = LocalContext.current
     val state = remember {
         apolloClient(context).query(LaunchListQuery()).watcher().toFlow()
             .map {
@@ -89,24 +87,23 @@ fun LaunchListContent() {
             }
     }.collectAsState(initial = UiState.Loading)
 
-    Stack(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (val value = state.value) {
-            is UiState.Loading -> Loading(modifier = Modifier.gravity(Alignment.Center))
-            is UiState.Error -> Error(modifier = Modifier.gravity(Alignment.Center))
+            is UiState.Loading -> Loading()
+            is UiState.Error -> Error()
             is UiState.Success -> LaunchList(launchList = value.launchList)
         }
     }
 }
 
 @Composable
-fun Loading(modifier: Modifier = Modifier) {
-    CircularProgressIndicator(modifier = modifier)
+fun Loading() {
+    CircularProgressIndicator()
 }
 
 @Composable
-fun Error(modifier: Modifier = Modifier) {
+fun Error() {
     Text(
-        modifier = modifier,
         text = "Oops something went wrong"
     )
 }
@@ -120,9 +117,8 @@ fun ErrorPreview() {
 
 @Composable
 fun LaunchList(launchList: List<LaunchListQuery.Launch>) {
-    // This could be a LazyColumn but the performance is not great at the moment
-    ScrollableColumn {
-        launchList.forEach { launch ->
+    LazyColumn {
+        items(launchList) { launch ->
             LaunchItem(
                 modifier = Modifier.fillMaxWidth(),
                 launch = launch
@@ -133,7 +129,7 @@ fun LaunchList(launchList: List<LaunchListQuery.Launch>) {
 
 @Composable
 fun LaunchItem(launch: LaunchListQuery.Launch, modifier: Modifier = Modifier) {
-    val context = ContextAmbient.current
+    val context = LocalContext.current
 
     val bookTrip = {
         // TODO: use something better than GlobalScope
@@ -152,7 +148,7 @@ fun LaunchItem(launch: LaunchListQuery.Launch, modifier: Modifier = Modifier) {
                                 )
                             )
                         )
-                    ).toDeferred().await()
+                    ).await()
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -213,12 +209,13 @@ fun LaunchItem(launch: LaunchListQuery.Launch, modifier: Modifier = Modifier) {
                 bottom.linkTo(parent.bottom)
             }
         }) {
-        CoilImage(
+        Image(
             modifier = Modifier.layoutId("image"),
-            request = ImageRequest.Builder(ContextAmbient.current)
-                .placeholder(R.drawable.ic_placeholder)
-                .data(launch.mission!!.missionPatch ?: R.drawable.ic_placeholder)
-                .build()
+            painter = rememberCoilPainter(
+                request = launch.mission!!.missionPatch ?: R.drawable.ic_placeholder,
+                previewPlaceholder =R.drawable.ic_placeholder,
+            ),
+            contentDescription = null
         )
         Divider(
             modifier = Modifier.layoutId("divider"),
